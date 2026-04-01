@@ -4019,16 +4019,29 @@
           })
         })
           .then(async (response) => {
-            const result = await response.json().catch(() => ({}));
+            let result;
+            try {
+              result = await response.json();
+            } catch (parseErr) {
+              console.error('Response was not JSON:', parseErr);
+              result = {};
+            }
+            console.log('API response:', response.status, result);
             if (!response.ok) {
-              throw new Error(result.message || result.error || 'Failed to send message.');
+              const errMsg = (typeof result.error === 'string' ? result.error : null)
+                          || (typeof result.message === 'string' ? result.message : null)
+                          || 'Failed to send message. Please try again.';
+              throw new Error(errMsg);
             }
 
             form.reset();
             showToast('🎉 Message sent successfully! I\'ll get back to you soon.');
           })
           .catch((error) => {
-            showToast(error.message || 'Could not connect to the form service. Please check your internet connection.', true);
+            console.error('Contact form error:', error);
+            const msg = (typeof error.message === 'string' && error.message)
+                     || 'Could not connect to the form service. Please check your internet connection.';
+            showToast(msg, true);
           })
           .finally(() => {
             btn.disabled = false;
