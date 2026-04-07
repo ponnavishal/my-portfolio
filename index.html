@@ -4015,7 +4015,7 @@
             const result = await response.json();
             if (result.success) {
               form.reset();
-              showToast('🎉 Message sent successfully! I\'ll get back to you soon.');
+              showToast('Message sent successfully! Vishal will get back to you soon.');
             } else {
               throw new Error(result.message || 'Failed to send message. Please try again.');
             }
