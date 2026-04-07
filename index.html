@@ -3430,7 +3430,10 @@
           <div class="contact-form-wrapper">
             <h3 class="form-title">Send a Message</h3>
             <form id="contact-form" novalidate>
-              <!-- Honeypot anti-spam -->
+              <!-- Web3Forms access key -->
+              <input type="hidden" name="access_key" value="3376ca71-c7ff-4c8a-b479-1ace89f3cc84">
+              <!-- Honeypot anti-spam (Web3Forms botcheck) -->
+              <input type="checkbox" name="botcheck" class="hp-field" style="display:none" tabindex="-1" autocomplete="off">
               <div class="hp-field" aria-hidden="true">
                 <label for="hp-name">Leave blank</label>
                 <input type="text" id="hp-name" name="hp_name" tabindex="-1" autocomplete="off" />
@@ -3973,11 +3976,6 @@
       form.addEventListener('submit', e => {
         e.preventDefault();
 
-        if (window.location.protocol === 'file:') {
-          showToast('Please run the site with backend: npm.cmd start, then open http://localhost:3000', true);
-          return;
-        }
-
         // Honeypot check
         if (document.getElementById('hp-name').value.trim() !== '') return;
 
@@ -4001,47 +3999,30 @@
         btn.disabled = true;
         btn.innerHTML = '<span>⏳</span> Sending…';
 
-        // Dynamically connect to backend locally, or use relative path in production
-        const isLocalDev = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') && window.location.port !== '3000';
-        const apiUrl = isLocalDev ? 'http://localhost:3000/api/contact' : '/api/contact';
+        // Submit via Web3Forms API
+        const formData = new FormData(form);
+        // Ensure trimmed values are sent
+        formData.set('name', name);
+        formData.set('email', email);
+        formData.set('subject', subject);
+        formData.set('message', message);
 
-        fetch(apiUrl, {
+        fetch('https://api.web3forms.com/submit', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            subject,
-            message
-          })
+          body: formData
         })
           .then(async (response) => {
-            let result;
-            try {
-              result = await response.json();
-            } catch (parseErr) {
-              console.error('Response was not JSON:', parseErr);
-              result = {};
+            const result = await response.json();
+            if (result.success) {
+              form.reset();
+              showToast('🎉 Message sent successfully! I\'ll get back to you soon.');
+            } else {
+              throw new Error(result.message || 'Failed to send message. Please try again.');
             }
-            console.log('API response:', response.status, result);
-            if (!response.ok) {
-              const errMsg = (typeof result.error === 'string' ? result.error : null)
-                          || (typeof result.message === 'string' ? result.message : null)
-                          || 'Failed to send message. Please try again.';
-              throw new Error(errMsg);
-            }
-
-            form.reset();
-            showToast('🎉 Message sent successfully! I\'ll get back to you soon.');
           })
           .catch((error) => {
             console.error('Contact form error:', error);
-            const msg = (typeof error.message === 'string' && error.message)
-                     || 'Could not connect to the form service. Please check your internet connection.';
-            showToast(msg, true);
+            showToast(error.message || 'Could not send message. Please check your internet connection.', true);
           })
           .finally(() => {
             btn.disabled = false;
